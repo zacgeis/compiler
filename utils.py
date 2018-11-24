@@ -22,22 +22,35 @@ def isIdentifier(char):
     return isAlpha(char) or char == "_"
 
 def displayError(string, pos, errorMessage):
-    errorLinePos, errorCharPos = pos
-    linePos = 0
-    line = ""
-    for char in string:
-        if char == "\n":
-            if linePos == errorLinePos:
-                break
-            line = ""
-            linePos += 1
-        else:
-            line += char
-    print()
-    print(line)
-    print(repeat("-", errorCharPos) + "^")
-    print(errorMessage)
-    print()
+    if pos == None:
+        print()
+        print(errorMessage)
+        print()
+    else:
+        errorLinePos, errorCharPos = pos
+        # Show where the character is expected
+        errorCharPos += 1
+        linePos = 0
+        linePrevious = ""
+        line = ""
+        lineNext = ""
+        for char in string:
+            if char == "\n":
+                if linePos > errorLinePos:
+                    break
+                linePrevious = line
+                line = lineNext
+                lineNext = ""
+                linePos += 1
+            else:
+                lineNext += char
+        print()
+        print(linePrevious)
+        print(line)
+        print(repeat("-", errorCharPos) + "^")
+        print(lineNext)
+        print(errorMessage)
+        print()
 
 class ArrayBuffer:
     def __init__(self, arr):
@@ -46,6 +59,12 @@ class ArrayBuffer:
 
     def remaining(self):
         return len(self.arr) - self.i
+
+    def lookback(self):
+        if self.i <= 0:
+            return self.arr[0]
+
+        return self.arr[self.i - 1]
 
     def peek(self):
         if self.i > len(self.arr) - 1:
@@ -93,5 +112,5 @@ class TrackedStringBuffer:
         return char
 
     def position(self):
-        return (self.linePos, self.charPos)
+        return (self.linePos, self.charPos - 1)
 

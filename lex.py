@@ -1,6 +1,6 @@
 from utils import *
 
-SYNTAX_KEYWORDS = ["int", "func", "if", "while"]
+# TODO: simplify the types here
 
 class Token:
     def __init__(self, _type, value, pos):
@@ -41,54 +41,52 @@ class Lexxer:
             elif peek == "\n":
                 self.buffer.consume()
             elif peek == "{":
+                self.buffer.consume()
                 tokens.append(Token("syntax", "{", self.buffer.position()))
-                self.buffer.consume()
             elif peek == "}":
+                self.buffer.consume()
                 tokens.append(Token("syntax", "}", self.buffer.position()))
-                self.buffer.consume()
             elif peek == "(":
+                self.buffer.consume()
                 tokens.append(Token("syntax", "(", self.buffer.position()))
-                self.buffer.consume()
             elif peek == ")":
+                self.buffer.consume()
                 tokens.append(Token("syntax", ")", self.buffer.position()))
-                self.buffer.consume()
             elif peek == ":":
+                self.buffer.consume()
                 tokens.append(Token("syntax", ":", self.buffer.position()))
-                self.buffer.consume()
             elif peek == ";":
+                self.buffer.consume()
                 tokens.append(Token("syntax", ";", self.buffer.position()))
-                self.buffer.consume()
             elif peek == ",":
+                self.buffer.consume()
                 tokens.append(Token("syntax", ",", self.buffer.position()))
-                self.buffer.consume()
             elif peek == "=":
-                pos = self.buffer.position()
                 self.buffer.consume()
                 if self.buffer.peek() == "=":
                     self.buffer.consume()
-                    tokens.append(Token("syntax", "==", pos))
+                    tokens.append(Token("syntax", "==", self.buffer.position()))
                 else:
-                    tokens.append(Token("syntax", "=", pos))
+                    tokens.append(Token("syntax", "=", self.buffer.position()))
             elif peek == "+":
+                self.buffer.consume()
                 tokens.append(Token("syntax", "+", self.buffer.position()))
-                self.buffer.consume()
             elif peek == "-":
+                self.buffer.consume()
                 tokens.append(Token("syntax", "-", self.buffer.position()))
-                self.buffer.consume()
             elif peek == "*":
+                self.buffer.consume()
                 tokens.append(Token("syntax", "*", self.buffer.position()))
-                self.buffer.consume()
             elif peek == "/":
-                tokens.append(Token("syntax", "/", self.buffer.position()))
                 self.buffer.consume()
+                tokens.append(Token("syntax", "/", self.buffer.position()))
             elif peek == "!":
-                pos = self.buffer.position()
                 self.buffer.consume()
                 if self.buffer.peek() == "=":
                     self.buffer.consume()
-                    tokens.append(Token("syntax", "!=", pos))
+                    tokens.append(Token("syntax", "!=", self.buffer.position()))
                 else:
-                    tokens.append(Token("syntax", "!", pos))
+                    tokens.append(Token("syntax", "!", self.buffer.position()))
             elif isDigit(peek):
                 tokens.append(self.lexNumberLiteral())
             elif isIdentifier(peek):
@@ -99,19 +97,14 @@ class Lexxer:
         return tokens
 
     def lexNumberLiteral(self):
-        pos = self.buffer.position()
         stringValue = ""
         while self.buffer.remaining() > 0 and isDigit(self.buffer.peek()):
             stringValue += self.buffer.consume()
         numberValue = stringToNumber(stringValue)
-        return Token("numberLiteral", numberValue, pos)
+        return Token("numberLiteral", numberValue, self.buffer.position())
 
     def lexIdentifier(self):
-        pos = self.buffer.position()
         stringValue = ""
         while self.buffer.remaining() > 0 and (isIdentifier(self.buffer.peek()) or isDigit(self.buffer.peek())):
             stringValue += self.buffer.consume()
-        if stringValue in SYNTAX_KEYWORDS:
-            return Token("syntax", stringValue, pos)
-        else:
-            return Token("identifier", stringValue, pos)
+        return Token("identifier", stringValue, self.buffer.position())
