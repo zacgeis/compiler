@@ -35,7 +35,7 @@ class TestParse(unittest.TestCase):
         tokens = lexxer.lex()
         parser = Parser(tokens, originalString)
         actual = parser.parseExpression()
-        expected =InfixNode(
+        expected = InfixNode(
             InfixNode(
                 NumberLiteralNode(1),
                 "+",

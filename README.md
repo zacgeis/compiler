@@ -22,3 +22,5 @@
 
 - Inspired by [Selfie](https://github.com/cksystemsteaching/selfie)
 - Start with most basic subset - always easier to expand later (tracer bullet style)
+- `gcc -masm=intel -S -O2 test.c` produces somewhat readable assembly for
+reference.
