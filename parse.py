@@ -1,7 +1,5 @@
 from utils import *
 
-# TODO: update nodes to not store identifier nodes, but to just store the name -- for functions
-
 class LiteralNode:
     def __init__(self, _type, value):
         self.type = _type
@@ -160,6 +158,7 @@ class Parser:
             else:
                 self.requireToken("syntax", "=")
                 expression = self.parseExpression()
+                # = is a call node for now. if, while, and func all have an impact on the assembly structure. = does not.
                 node = CallNode("=", [IdentifierNode(identifierToken.value), expression])
             self.requireToken("syntax", ";")
             return node
