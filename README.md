@@ -36,6 +36,9 @@ reference.
 - Went back over the AST and really considered if each node was necessary. Ended
 up getting rid of infix and prefix and combining them into call. Good exercise
 in refactoring.
+- As I started thinking through the static analyses stage, I ended up making
+changes to the AST. Tracer bullet approach helped avoid large amounts of
+unecessary work here.
 
 ## Inspirations
 
