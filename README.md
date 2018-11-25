@@ -5,6 +5,11 @@
 - Come up with different name
 - Add better test coverage on parser and lexxer
 - Optimize local call temp storage to use registers
+- Update lexxer and parser to allow newlines as semicolons
+  - Given that newlines are going to be in many locations, we'll need a way
+optionally skipping them.
+  - An example of this is when you break the function definition across multiple
+lines
 
 ## Goals
 
