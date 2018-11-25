@@ -9,7 +9,7 @@ class TestParse(unittest.TestCase):
         tokens = lexxer.lex()
         parser = Parser(tokens, originalString)
         actual = parser.parseExpression()
-        expected = InfixNode(NumberLiteralNode(1), "+", NumberLiteralNode(1))
+        expected = CallNode("+", [LiteralNode("integer", 1), LiteralNode("integer", 1)])
         self.assertEqual(actual, expected)
 
     def testOrderOfOperations(self):
@@ -18,14 +18,12 @@ class TestParse(unittest.TestCase):
         tokens = lexxer.lex()
         parser = Parser(tokens, originalString)
         actual = parser.parseExpression()
-        expected = InfixNode(
-            NumberLiteralNode(1),
+        expected = CallNode(
             "+",
-            InfixNode(
-                NumberLiteralNode(2),
-                "*",
-                NumberLiteralNode(3)
-            )
+            [
+                LiteralNode("integer", 1),
+                CallNode("*", [LiteralNode("integer", 2), LiteralNode("integer", 3)])
+            ]
         )
         self.assertEqual(actual, expected)
 
@@ -35,14 +33,12 @@ class TestParse(unittest.TestCase):
         tokens = lexxer.lex()
         parser = Parser(tokens, originalString)
         actual = parser.parseExpression()
-        expected = InfixNode(
-            InfixNode(
-                NumberLiteralNode(1),
-                "+",
-                NumberLiteralNode(2)
-            ),
+        expected = CallNode(
             "*",
-            NumberLiteralNode(3)
+            [
+                CallNode("+", [LiteralNode("integer", 1), LiteralNode("integer", 2)]),
+                LiteralNode("integer", 3)
+            ]
         )
         self.assertEqual(actual, expected)
 
@@ -52,16 +48,18 @@ class TestParse(unittest.TestCase):
         tokens = lexxer.lex()
         parser = Parser(tokens, originalString)
         actual = parser.parseExpression()
-        expected = InfixNode(
-            NumberLiteralNode(1),
+        expected = CallNode(
             "+",
-            CallNode(
-                IdentifierNode("someCall"),
-                [
-                    InfixNode(NumberLiteralNode(1), "+", NumberLiteralNode(1)),
-                    NumberLiteralNode(2)
-                ]
-            )
+            [
+                LiteralNode("integer", 1),
+                CallNode(
+                    "someCall",
+                    [
+                        CallNode("+", [LiteralNode("integer", 1), LiteralNode("integer", 1)]),
+                        LiteralNode("integer", 2)
+                    ]
+                )
+            ]
         )
         self.assertEqual(actual, expected)
 
@@ -71,7 +69,7 @@ class TestParse(unittest.TestCase):
         tokens = lexxer.lex()
         parser = Parser(tokens, originalString)
         actual = parser.parseStatement()
-        expected = IfNode(NumberLiteralNode(1), [CallNode(IdentifierNode("myFun"), [])], [])
+        expected = IfNode(LiteralNode("integer", 1), [CallNode("myFun", [])], [])
         self.assertEqual(actual, expected)
 
     def testIfElse(self):
@@ -80,7 +78,7 @@ class TestParse(unittest.TestCase):
         tokens = lexxer.lex()
         parser = Parser(tokens, originalString)
         actual = parser.parseStatement()
-        expected = IfNode(NumberLiteralNode(1), [CallNode(IdentifierNode("myFun"), [])], [CallNode(IdentifierNode("myFun2"), [])])
+        expected = IfNode(LiteralNode("integer", 1), [CallNode("myFun", [])], [CallNode("myFun2", [])])
         self.assertEqual(actual, expected)
 
     def testWhile(self):
@@ -89,7 +87,7 @@ class TestParse(unittest.TestCase):
         tokens = lexxer.lex()
         parser = Parser(tokens, originalString)
         actual = parser.parseStatement()
-        expected = WhileNode(NumberLiteralNode(1), [CallNode(IdentifierNode("myFun"), [])])
+        expected = WhileNode(LiteralNode("integer", 1), [CallNode("myFun", [])])
         self.assertEqual(actual, expected)
 
     def testParseVariable(self):
@@ -98,14 +96,16 @@ class TestParse(unittest.TestCase):
         tokens = lexxer.lex()
         parser = Parser(tokens, originalString)
         actual = parser.parseStatement()
-        expected = AssignmentNode(VariableNode(IdentifierNode("myNum"), IdentifierNode("int")), NumberLiteralNode(1))
+        expected = DeclarationNode(VariableNode("myNum","int"), LiteralNode("integer", 1))
         self.assertEqual(actual, expected)
 
     def testParseFullProgram(self):
         originalString = """
         myNum: int = 1;
         func myFunction(x: int): int {
+            myLocal: int = 0;
             if x == myNum {
+                myLocal = 2;
                 return 1;
             } else {
                 return 0;
@@ -117,16 +117,20 @@ class TestParse(unittest.TestCase):
         parser = Parser(tokens, originalString)
         actual = parser.parse()
         expected = [
-                AssignmentNode(VariableNode(IdentifierNode("myNum"), IdentifierNode("int")), NumberLiteralNode(1)),
+                DeclarationNode(VariableNode("myNum", "int"), LiteralNode("integer", 1)),
                 FunctionNode(
-                    IdentifierNode("myFunction"),
-                    IdentifierNode("int"),
-                    [VariableNode(IdentifierNode("x"), IdentifierNode("int"))],
+                    "myFunction",
+                    "int",
+                    [VariableNode("x", "int")],
                     [
+                        DeclarationNode(VariableNode("myLocal", "int"), LiteralNode("integer", 0)),
                         IfNode(
-                            InfixNode(IdentifierNode("x"), "==", IdentifierNode("myNum")),
-                            [ReturnNode(NumberLiteralNode(1))],
-                            [ReturnNode(NumberLiteralNode(0))]
+                            CallNode("==", [IdentifierNode("x"), IdentifierNode("myNum")]),
+                            [
+                                CallNode("=", [IdentifierNode("myLocal"), LiteralNode("integer", 2)]),
+                                ReturnNode(LiteralNode("integer", 1))
+                            ],
+                            [ReturnNode(LiteralNode("integer", 0))]
                         )
                     ]
                 )

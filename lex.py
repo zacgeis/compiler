@@ -2,6 +2,8 @@ from utils import *
 
 # TODO: simplify the types here
 
+SYNTAX_IDENTIFIERS = ["func", "if", "else", "while", "return"]
+
 class Token:
     def __init__(self, _type, value, pos):
         self._type = _type
@@ -107,4 +109,8 @@ class Lexxer:
         stringValue = ""
         while self.buffer.remaining() > 0 and (isIdentifier(self.buffer.peek()) or isDigit(self.buffer.peek())):
             stringValue += self.buffer.consume()
-        return Token("identifier", stringValue, self.buffer.position())
+        # Doing this for the potential of better syntax highlighting
+        _type = "identifier"
+        if stringValue in SYNTAX_IDENTIFIERS:
+            _type = "syntax"
+        return Token(_type, stringValue, self.buffer.position())

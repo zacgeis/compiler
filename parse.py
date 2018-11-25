@@ -1,44 +1,19 @@
 from utils import *
 
-# We store references to tokens for positioning information
-class NumberLiteralNode:
-    def __init__(self, number):
-        self.number = number
+# TODO: update nodes to not store identifier nodes, but to just store the name -- for functions
+
+class LiteralNode:
+    def __init__(self, _type, value):
+        self.type = _type
+        self.value = value
 
     def __repr__(self):
-        return "NumberLiteralNode(number = '{}')".format(self.number)
+        return "LiteralNode(type = '{}', value = '{}')".format(self.type, self.value)
 
     def __eq__(self, other):
-        return (isinstance(other, NumberLiteralNode)
-                and self.number == other.number)
-
-class PrefixNode:
-    def __init__(self, prefix, right):
-        self.prefix = prefix
-        self.right = right
-
-    def __repr__(self):
-        return "PrefixNode(prefix = '{}', right = '{}')".format(self.prefix, self.right)
-
-    def __eq__(self, other):
-        return (isinstance(other, PrefixNode)
-                and self.prefix == other.prefix
-                and self.right == other.right)
-
-class InfixNode:
-    def __init__(self, left, op, right):
-        self.left = left
-        self.op = op
-        self.right = right
-
-    def __repr__(self):
-        return "InfixNode(left = '{}', op = '{}', right = '{}')".format(self.left, self.op, self.right)
-
-    def __eq__(self, other):
-        return (isinstance(other, InfixNode)
-                and self.left == other.left
-                and self.op == other.op
-                and self.right == other.right)
+        return (isinstance(other, LiteralNode)
+                and self.type == other.type
+                and self.value == other.value)
 
 class CallNode:
     def __init__(self, identifier, arguments):
@@ -105,16 +80,16 @@ class VariableNode:
                 and self.identifier == other.identifier
                 and self._type == other._type)
 
-class AssignmentNode:
+class DeclarationNode:
     def __init__(self, variable, expression):
         self.variable = variable
         self.expression = expression
 
     def __repr__(self):
-        return "AssignmentNode(variable = '{}', expression = '{}')".format(self.variable, self.expression)
+        return "DeclarationNode(variable = '{}', expression = '{}')".format(self.variable, self.expression)
 
     def __eq__(self, other):
-        return (isinstance(other, AssignmentNode)
+        return (isinstance(other, DeclarationNode)
                 and self.variable == other.variable
                 and self.expression == other.expression)
 
@@ -160,41 +135,47 @@ class Parser:
 
     def parseTopLevel(self):
         peekToken = self.buffer.peek()
-        if peekToken.match("identifier", "func"):
+        if peekToken.match("syntax", "func"):
             return self.parseFunction()
         else:
-            return self.parseAssignment()
+            declarationNode = self.parseDeclaration()
+            self.requireToken("syntax", ";")
+            return declarationNode
 
     def parseStatement(self):
         peekToken = self.buffer.peek()
-        if peekToken.match("identifier", "if"):
+        if peekToken.match("syntax", "if"):
             return self.parseIf()
-        elif peekToken.match("identifier", "while"):
+        elif peekToken.match("syntax", "while"):
             return self.parseWhile()
-        elif peekToken.match("identifier", "return"):
+        elif peekToken.match("syntax", "return"):
             return self.parseReturn()
         else:
-            callOrIdentifierNode = self.parseCallOrIdentifier()
-            if isinstance(callOrIdentifierNode, CallNode):
-                self.requireToken("syntax", ";")
-                return callOrIdentifierNode
+            identifierToken = self.requireToken("identifier", None)
+            node = None
+            if self.buffer.peek().match("syntax", "("):
+                node = self.parseCall(identifierToken)
+            elif self.buffer.peek().match("syntax", ":"):
+                node = self.parseDeclarationFromIdentifier(identifierToken)
             else:
-                return self.parseAssignmentFromIdentifier(callOrIdentifierNode)
+                self.requireToken("syntax", "=")
+                expression = self.parseExpression()
+                node = CallNode("=", [IdentifierNode(identifierToken.value), expression])
+            self.requireToken("syntax", ";")
+            return node
 
-    def parseAssignment(self):
+    def parseDeclaration(self):
         identifierToken = self.requireToken("identifier", None)
-        identifierNode = IdentifierNode(identifierToken.value)
-        return self.parseAssignmentFromIdentifier(identifierNode)
+        return self.parseDeclarationFromIdentifier(identifierToken)
 
-    def parseAssignmentFromIdentifier(self, identifierNode):
-        variableNode = self.parseVariableFromIdetifier(identifierNode)
+    def parseDeclarationFromIdentifier(self, identifierToken):
+        variableNode = self.parseVariableFromIdentifier(identifierToken)
         self.requireToken("syntax", "=")
         expressionNode = self.parseExpression()
-        self.requireToken("syntax", ";")
-        return AssignmentNode(variableNode, expressionNode)
+        return DeclarationNode(variableNode, expressionNode)
 
     def parseFunction(self):
-        self.requireToken("identifier", "func")
+        self.requireToken("syntax", "func")
         nameIdentifierToken = self.requireToken("identifier", None, "Name is missing.")
         self.requireToken("syntax", "(")
         parameterNodes = []
@@ -212,8 +193,8 @@ class Parser:
         typeIdentifierToken = self.requireToken("identifier", None, "Type is missing.")
         statements = self.parseStatementBlock()
         return FunctionNode(
-            IdentifierNode(nameIdentifierToken.value),
-            IdentifierNode(typeIdentifierToken.value),
+            nameIdentifierToken.value,
+            typeIdentifierToken.value,
             parameterNodes,
             statements
         )
@@ -230,13 +211,13 @@ class Parser:
         statements = self.parseStatementBlock()
         elseStatements = []
         peekToken = self.buffer.peek()
-        if peekToken is not None and peekToken.match("identifier", "else"):
+        if peekToken is not None and peekToken.match("syntax", "else"):
             self.buffer.consume()
             elseStatements = self.parseStatementBlock()
         return IfNode(conditional, statements, elseStatements)
 
     def parseReturn(self):
-        self.requireToken("identifier", "return")
+        self.requireToken("syntax", "return")
         peekToken = self.buffer.peek()
         expression = None
         if not peekToken.match("syntax", ";"):
@@ -258,7 +239,7 @@ class Parser:
         if opToken is not None and opToken.matchList("syntax", ["!=", "=="]):
             self.buffer.consume()
             right = self.parseInfixL1()
-            return InfixNode(left, opToken.value, right)
+            return CallNode(opToken.value, [left, right])
         else:
             return left
 
@@ -268,7 +249,7 @@ class Parser:
         if opToken is not None and opToken.matchList("syntax", ["+", "-"]):
             self.buffer.consume()
             right = self.parseInfixL2()
-            return InfixNode(left, opToken.value, right)
+            return CallNode(opToken.value, [left, right])
         else:
             return left
 
@@ -278,7 +259,7 @@ class Parser:
         if opToken is not None and opToken.matchList("syntax", ["*", "/"]):
             self.buffer.consume()
             right = self.parsePrefix()
-            return InfixNode(left, opToken.value, right)
+            return CallNode(opToken.value, [left, right])
         else:
             return left
 
@@ -297,50 +278,46 @@ class Parser:
             return None
         if peekToken.matchType("numberLiteral"):
             token = self.buffer.consume()
-            right = NumberLiteralNode(token.value)
+            right = LiteralNode("integer", token.value)
         elif peekToken.match("syntax", "("):
             self.buffer.consume()
             right = self.parseExpression()
             self.requireToken("syntax", ")")
         else:
-            right = self.parseCallOrIdentifier()
+            identifierToken = self.requireToken("identifier", None)
+            if self.buffer.peek().match("syntax", "("):
+                right = self.parseCall(identifierToken)
+            else:
+                right = IdentifierNode(identifierToken.value)
 
         if prefix is None:
             return right
         else:
-            return PrefixNode(prefix, right)
+            return CallNode(prefix, [right])
 
-    def parseCallOrIdentifier(self):
-        identifierToken = self.requireToken("identifier", None)
-        identifierNode = IdentifierNode(identifierToken.value)
-        peekToken = self.buffer.peek()
-        if peekToken.match("syntax", "("):
-            self.buffer.consume()
-            argumentNodes = []
-            if not self.buffer.peek().match("syntax", ")"):
-                argumentNodes.append(self.parseExpression())
-                while True:
-                    argPeekToken = self.buffer.peek()
-                    if argPeekToken is not None and argPeekToken.match("syntax", ","):
-                        self.buffer.consume()
-                        argumentNodes.append(self.parseExpression())
-                    else:
-                        break
-            self.requireToken("syntax", ")")
-            return CallNode(identifierNode, argumentNodes)
-        else:
-            return identifierNode
+    def parseCall(self, identifierToken):
+        self.requireToken("syntax", "(")
+        argumentNodes = []
+        if not self.buffer.peek().match("syntax", ")"):
+            argumentNodes.append(self.parseExpression())
+            while True:
+                argPeekToken = self.buffer.peek()
+                if argPeekToken is not None and argPeekToken.match("syntax", ","):
+                    self.buffer.consume()
+                    argumentNodes.append(self.parseExpression())
+                else:
+                    break
+        self.requireToken("syntax", ")")
+        return CallNode(identifierToken.value, argumentNodes)
 
     def parseVariable(self):
         identifierToken = self.requireToken("identifier", None)
-        identifierNode = IdentifierNode(identifierToken.value)
-        return self.parseVariableFromIdetifier(identifierNode)
+        return self.parseVariableFromIdentifier(identifierToken)
 
-    def parseVariableFromIdetifier(self, identifierNode):
+    def parseVariableFromIdentifier(self, identifierToken):
         self.requireToken("syntax", ":", "Missing ':' before type.")
         typeIdentifierToken = self.requireToken("identifier", None)
-        typeIdentifierNode = IdentifierNode(typeIdentifierToken.value)
-        return VariableNode(identifierNode, typeIdentifierNode)
+        return VariableNode(identifierToken.value, typeIdentifierToken.value)
 
     def requireToken(self, _type, value, additionalDetails = ""):
         peekToken = self.buffer.peek()
@@ -350,5 +327,24 @@ class Parser:
                 missing = _type
             displayError(self.originalString, self.buffer.lookback().pos, "Detected a missing '{}'. {}".format(missing, additionalDetails))
             raise
-        self.buffer.consume()
-        return peekToken
+        return self.buffer.consume()
+
+    def requireTokens(self, type_value_pairs, additionalDetails = ""):
+        peekToken = self.buffer.peek()
+        matched = False
+        matchedToken = None
+        values = []
+        for _type, value in type_value_pairs:
+            if peekToken.match(_type, value):
+                matched = True
+                matchedToken = self.buffer.consume()
+                break
+            values.append(value)
+        if not matched:
+            displayError(
+                    self.originalString,
+                    self.buffer.lookback().pos,
+                    "Detected a missing '{}'. {}".format("' or '".join(values), additionalDetails)
+            )
+            raise
+        return matchedToken
