@@ -1,7 +1,9 @@
 import argparse
 from parse import *
 from lex import *
+from analyze import *
 
+# Currently just for testing
 def main():
     argparser = argparse.ArgumentParser(description = "Toy compiler")
     argparser.add_argument("file", help = "File to compile")
@@ -12,7 +14,8 @@ def main():
     tokens = lexxer.lex()
     parser = Parser(tokens, inputString)
     nodes = parser.parse()
-    print(nodes)
+    analyzer = Analyzer(nodes, inputString)
+    analyzer.analyze()
 
 if __name__ == "__main__":
     main()

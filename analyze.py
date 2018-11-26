@@ -81,12 +81,15 @@ class Analyzer:
     def firstPass(self, node):
         if isinstance(node, GlobalDeclarationNode):
             if self.inFunction: raise Exception("Found a GlobalDeclarationNode while in a function.")
-            self.globalVariables[node.variable.name] = node
+            self.globalVariables[node.variable.name] = node.variable
         elif isinstance(node, FunctionNode):
             if self.inFunction: raise Exception("Found a FunctionNode while in a function.")
             functionSignature = self.functionSignatureFromFunctionNode(node)
             functionDetails = FunctionDetails(functionSignature, node)
             self.functions[functionSignature] = functionDetails
+            # TODO: maybe change this to args
+            for variableNode in node.parameters:
+                functionDetails.localVariables[variableNode.name] = variableNode
             self.inFunction = True
             self.currentFunction = functionDetails
             for statement in node.statements:
@@ -98,7 +101,7 @@ class Analyzer:
     def secondPass(self, node):
         if isinstance(node, DeclarationNode):
             if not self.inFunction: raise Exception("Found a GlobalDeclarationNode while in global.")
-            self.currentFunction.localVariables[node.variable.name] = node
+            self.currentFunction.localVariables[node.variable.name] = node.variable
         elif isinstance(node, FunctionNode):
             if self.inFunction: raise Exception("Found a FunctionNode while in a function.")
             functionSignature = self.functionSignatureFromFunctionNode(node)
@@ -126,7 +129,7 @@ class Analyzer:
             self.findFunctionSignatureFromCallNode(node)
         elif isinstance(node, IdentifierNode):
             # Will raise an exception if it's not found
-            self.findIdentifierDeclaration(node)
+            self.findIdentifierVariable(node)
         elif isinstance(node, LiteralNode):
             pass
         elif isinstance(node, VariableNode):
@@ -140,13 +143,13 @@ class Analyzer:
             paramTypes.append(variableNode.type)
         return FunctionSignature(name, paramTypes, returnType)
 
-    def findIdentifierDeclaration(self, node):
+    def findIdentifierVariable(self, node):
         if self.inFunction:
             if node.value in self.currentFunction.localVariables:
                 return self.currentFunction.localVariables[node.value]
         if node.value in self.globalVariables:
             return self.globalVariables[node.value]
-        self.addAnalysisError(node.pos, "Declaration not found: '{}'.".format(node.value))
+        self.addAnalysisError(node.pos, "Variable not found: '{}'.".format(node.value))
         return None
 
     def findFunctionSignatureFromCallNode(self, callNode):
@@ -166,9 +169,17 @@ class Analyzer:
 
     def getType(self, node):
         if isinstance(node, IdentifierNode):
-            return self.findIdentifierDeclaration(node).variable.type
+            declarationNode = self.findIdentifierVariable(node)
+            if declarationNode is not None:
+                return declarationNode.type
+            else:
+                return None
         elif isinstance(node, CallNode):
-            return self.findFunctionSignatureFromCallNode(node).returnType
+            functionSignature = self.findFunctionSignatureFromCallNode(node)
+            if functionSignature is not None:
+                return functionSignature.returnType
+            else:
+                return None
         elif isinstance(node, LiteralNode):
             return node.type
         else:

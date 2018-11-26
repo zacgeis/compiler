@@ -4,6 +4,7 @@ from lex import *
 from analyze import *
 
 class TestAnalyze(unittest.TestCase):
+    # TODO: finish writing this test case
     def testBasic(self):
         originalString = """
         myNum: int = 1;
@@ -11,7 +12,7 @@ class TestAnalyze(unittest.TestCase):
             myLocal: int = 0;
             if x == myNum {
                 myLocal = 2;
-                return 1;
+                return x;
             } else {
                 return 0;
             }
@@ -23,7 +24,7 @@ class TestAnalyze(unittest.TestCase):
         nodes = parser.parse()
         analyzer = Analyzer(nodes, originalString)
         analyzer.analyze()
-        self.assertEqual(True, True)
+        self.assertEqual(False, analyzer.hasErrors())
 
 if __name__ == "__main__":
     unittest.main()
