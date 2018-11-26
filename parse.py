@@ -1,5 +1,7 @@
 from utils import *
 
+# Only include position information on nodes where it'll be helpful further down the pipeline.
+
 class LiteralNode:
     def __init__(self, _type, value):
         self.type = _type
@@ -9,20 +11,22 @@ class LiteralNode:
         return "LiteralNode(type = '{}', value = '{}')".format(self.type, self.value)
 
     def __eq__(self, other):
-        return (isinstance(other, LiteralNode)
+        return (isinstance(other, self.__class__)
                 and self.type == other.type
                 and self.value == other.value)
 
 class CallNode:
-    def __init__(self, identifier, arguments):
+    def __init__(self, identifier, arguments, pos = None):
         self.identifier = identifier
         self.arguments = arguments
+        self.pos = pos
 
     def __repr__(self):
-        return "CallNode(identifier = '{}', arguments = '{}')".format(self.identifier, self.arguments)
+        return "CallNode(identifier = '{}', arguments = '{}', pos = '{}')".format(self.identifier, self.arguments, self.pos)
 
+    # self.pos intentionally not incldued - it's just additional information
     def __eq__(self, other):
-        return (isinstance(other, CallNode)
+        return (isinstance(other, self.__class__)
                 and self.identifier == other.identifier
                 and self.arguments == other.arguments)
 
@@ -36,7 +40,7 @@ class IfNode:
         return "IfNode(conditional = '{}', statements = '{}', elseStatements = '{}')".format(self.conditional, self.statements, self.elseStatements)
 
     def __eq__(self, other):
-        return (isinstance(other, IfNode)
+        return (isinstance(other, self.__class__)
                 and self.conditional == other.conditional
                 and self.statements == other.statements
                 and self.elseStatements == other.elseStatements)
@@ -50,33 +54,48 @@ class WhileNode:
         return "WhileNode(conditional = '{}', statements = '{}')".format(self.conditional, self.statements)
 
     def __eq__(self, other):
-        return (isinstance(other, WhileNode)
+        return (isinstance(other, self.__class__)
                 and self.conditional == other.conditional
                 and self.statements == other.statements)
 
 class IdentifierNode:
-    def __init__(self, value):
+    def __init__(self, value, pos = None):
         self.value = value
+        self.pos = pos
 
     def __repr__(self):
-        return "IdentifierNode(value = '{}')".format(self.value)
+        return "IdentifierNode(value = '{}', pos = '{}')".format(self.value, self.pos)
 
+    # self.pos intentionally not incldued - it's just additional information
     def __eq__(self, other):
-        return (isinstance(other, IdentifierNode)
+        return (isinstance(other, self.__class__)
                 and self.value == other.value)
 
 class VariableNode:
-    def __init__(self, identifier, _type):
-        self.identifier = identifier
-        self._type = _type
+    def __init__(self, name, _type):
+        self.name = name
+        self.type = _type
 
     def __repr__(self):
-        return "VariableNode(identifier = '{}', type = '{}')".format(self.identifier, self._type)
+        return "VariableNode(name = '{}', type = '{}')".format(self.name, self.type)
 
     def __eq__(self, other):
-        return (isinstance(other, VariableNode)
+        return (isinstance(other, self.__class__)
                 and self.identifier == other.identifier
-                and self._type == other._type)
+                and self.type == other.type)
+
+class GlobalDeclarationNode:
+    def __init__(self, variable, literal):
+        self.variable = variable
+        self.literal = literal
+
+    def __repr__(self):
+        return "GlobalDeclarationNode(variable = '{}', literal = '{}')".format(self.variable, self.literal)
+
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__)
+                and self.variable == other.variable
+                and self.literal == other.literal)
 
 class DeclarationNode:
     def __init__(self, variable, expression):
@@ -87,37 +106,37 @@ class DeclarationNode:
         return "DeclarationNode(variable = '{}', expression = '{}')".format(self.variable, self.expression)
 
     def __eq__(self, other):
-        return (isinstance(other, DeclarationNode)
+        return (isinstance(other, self.__class__)
                 and self.variable == other.variable
                 and self.expression == other.expression)
 
 class FunctionNode:
     def __init__(self, name, _type, parameters, statements):
         self.name = name
-        self._type = _type
+        self.type = _type
         self.parameters = parameters
         self.statements = statements
 
     def __repr__(self):
-        return "FunctionNode(name = '{}', type = '{}', parameters = '{}', statements = '{}')".format(self.name, self._type, self.parameters, self.statements)
+        return "FunctionNode(name = '{}', type = '{}', parameters = '{}', statements = '{}')".format(self.name, self.type, self.parameters, self.statements)
 
     def __eq__(self, other):
-        return (isinstance(other, FunctionNode)
+        return (isinstance(other, self.__class__)
             and self.name == other.name
-            and self._type == other._type
+            and self.type == other.type
             and self.parameters == other.parameters
             and self.statements == other.statements)
 
 class ReturnNode:
-    def __init__(self, value):
-        self.value = value
+    def __init__(self, expression):
+        self.expression = expression
 
     def __repr__(self):
-        return "ReturnNode(value = '{}')".format(self.value)
+        return "ReturnNode(expression = '{}')".format(self.expression)
 
     def __eq__(self, other):
-        return (isinstance(other, ReturnNode)
-                and self.value == other.value)
+        return (isinstance(other, self.__class__)
+                and self.expression == other.expression)
 
 class Parser:
     def __init__(self, tokens, originalString):
@@ -136,9 +155,14 @@ class Parser:
         if peekToken.match("syntax", "func"):
             return self.parseFunction()
         else:
-            declarationNode = self.parseDeclaration()
-            self.requireToken("syntax", ";")
-            return declarationNode
+            return self.parseGlobalDeclaration()
+
+    def parseGlobalDeclaration(self):
+        variableNode = self.parseVariable()
+        self.requireToken("syntax", "=")
+        literalNode = self.parseLiteral()
+        self.requireToken("syntax", ";")
+        return GlobalDeclarationNode(variableNode, literalNode)
 
     def parseStatement(self):
         peekToken = self.buffer.peek()
@@ -156,16 +180,12 @@ class Parser:
             elif self.buffer.peek().match("syntax", ":"):
                 node = self.parseDeclarationFromIdentifier(identifierToken)
             else:
-                self.requireToken("syntax", "=")
+                equalToken = self.requireToken("syntax", "=")
                 expression = self.parseExpression()
                 # = is a call node for now. if, while, and func all have an impact on the assembly structure. = does not.
-                node = CallNode("=", [IdentifierNode(identifierToken.value), expression])
+                node = CallNode("=", [IdentifierNode(identifierToken.value, identifierToken.pos), expression], equalToken.pos)
             self.requireToken("syntax", ";")
             return node
-
-    def parseDeclaration(self):
-        identifierToken = self.requireToken("identifier", None)
-        return self.parseDeclarationFromIdentifier(identifierToken)
 
     def parseDeclarationFromIdentifier(self, identifierToken):
         variableNode = self.parseVariableFromIdentifier(identifierToken)
@@ -238,7 +258,7 @@ class Parser:
         if opToken is not None and opToken.matchList("syntax", ["!=", "=="]):
             self.buffer.consume()
             right = self.parseInfixL1()
-            return CallNode(opToken.value, [left, right])
+            return CallNode(opToken.value, [left, right], opToken.pos)
         else:
             return left
 
@@ -248,7 +268,7 @@ class Parser:
         if opToken is not None and opToken.matchList("syntax", ["+", "-"]):
             self.buffer.consume()
             right = self.parseInfixL2()
-            return CallNode(opToken.value, [left, right])
+            return CallNode(opToken.value, [left, right], opToken.pos)
         else:
             return left
 
@@ -258,7 +278,7 @@ class Parser:
         if opToken is not None and opToken.matchList("syntax", ["*", "/"]):
             self.buffer.consume()
             right = self.parsePrefix()
-            return CallNode(opToken.value, [left, right])
+            return CallNode(opToken.value, [left, right], opToken.pos)
         else:
             return left
 
@@ -275,9 +295,8 @@ class Parser:
 
         if peekToken is None:
             return None
-        if peekToken.matchType("numberLiteral"):
-            token = self.buffer.consume()
-            right = LiteralNode("integer", token.value)
+        if peekToken.isLiteral():
+            right = self.parseLiteral()
         elif peekToken.match("syntax", "("):
             self.buffer.consume()
             right = self.parseExpression()
@@ -287,12 +306,19 @@ class Parser:
             if self.buffer.peek().match("syntax", "("):
                 right = self.parseCall(identifierToken)
             else:
-                right = IdentifierNode(identifierToken.value)
+                right = IdentifierNode(identifierToken.value, identifierToken.pos)
 
         if prefix is None:
             return right
         else:
-            return CallNode(prefix, [right])
+            return CallNode(prefix, [right], opToken.pos)
+
+    def parseLiteral(self):
+        token = self.buffer.consume()
+        if not token.isLiteral():
+            self.raiseSyntaxError("Expected a literal.")
+        if token.matchType("integerLiteral"):
+            return LiteralNode("int", token.value)
 
     def parseCall(self, identifierToken):
         self.requireToken("syntax", "(")
@@ -307,7 +333,7 @@ class Parser:
                 else:
                     break
         self.requireToken("syntax", ")")
-        return CallNode(identifierToken.value, argumentNodes)
+        return CallNode(identifierToken.value, argumentNodes, identifierToken.pos)
 
     def parseVariable(self):
         identifierToken = self.requireToken("identifier", None)
@@ -318,14 +344,17 @@ class Parser:
         typeIdentifierToken = self.requireToken("identifier", None)
         return VariableNode(identifierToken.value, typeIdentifierToken.value)
 
+    def raiseSyntaxError(self, message):
+        displayError(self.originalString, self.buffer.lookback().pos, message)
+        raise Exception("Syntax error")
+
     def requireToken(self, _type, value, additionalDetails = ""):
         peekToken = self.buffer.peek()
         if peekToken is None or not ((value is None and peekToken.matchType(_type)) or peekToken.match(_type, value)):
             missing = value
             if missing is None:
                 missing = _type
-            displayError(self.originalString, self.buffer.lookback().pos, "Detected a missing '{}'. {}".format(missing, additionalDetails))
-            raise
+            self.raiseSyntaxError("Detected a missing '{}'. {}".format(missing, additionalDetails))
         return self.buffer.consume()
 
     def requireTokens(self, type_value_pairs, additionalDetails = ""):
@@ -340,10 +369,5 @@ class Parser:
                 break
             values.append(value)
         if not matched:
-            displayError(
-                    self.originalString,
-                    self.buffer.lookback().pos,
-                    "Detected a missing '{}'. {}".format("' or '".join(values), additionalDetails)
-            )
-            raise
+            self.raiseSyntaxError("Detected a missing '{}'. {}".format("' or '".join(values), additionalDetails))
         return matchedToken

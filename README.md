@@ -22,6 +22,7 @@ lines
 - Target CPU written on FPGA?
 - Maybe write an assembler?
 - Maybe write a linker?
+- Maybe write a vm backend?
 - Initial python is simple enough that self hosting is an option
 
 ## Usage

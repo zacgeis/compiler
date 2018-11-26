@@ -9,7 +9,7 @@ class TestParse(unittest.TestCase):
         tokens = lexxer.lex()
         parser = Parser(tokens, originalString)
         actual = parser.parseExpression()
-        expected = CallNode("+", [LiteralNode("integer", 1), LiteralNode("integer", 1)])
+        expected = CallNode("+", [LiteralNode("int", 1), LiteralNode("int", 1)])
         self.assertEqual(actual, expected)
 
     def testOrderOfOperations(self):
@@ -21,8 +21,8 @@ class TestParse(unittest.TestCase):
         expected = CallNode(
             "+",
             [
-                LiteralNode("integer", 1),
-                CallNode("*", [LiteralNode("integer", 2), LiteralNode("integer", 3)])
+                LiteralNode("int", 1),
+                CallNode("*", [LiteralNode("int", 2), LiteralNode("int", 3)])
             ]
         )
         self.assertEqual(actual, expected)
@@ -36,8 +36,8 @@ class TestParse(unittest.TestCase):
         expected = CallNode(
             "*",
             [
-                CallNode("+", [LiteralNode("integer", 1), LiteralNode("integer", 2)]),
-                LiteralNode("integer", 3)
+                CallNode("+", [LiteralNode("int", 1), LiteralNode("int", 2)]),
+                LiteralNode("int", 3)
             ]
         )
         self.assertEqual(actual, expected)
@@ -51,12 +51,12 @@ class TestParse(unittest.TestCase):
         expected = CallNode(
             "+",
             [
-                LiteralNode("integer", 1),
+                LiteralNode("int", 1),
                 CallNode(
                     "someCall",
                     [
-                        CallNode("+", [LiteralNode("integer", 1), LiteralNode("integer", 1)]),
-                        LiteralNode("integer", 2)
+                        CallNode("+", [LiteralNode("int", 1), LiteralNode("int", 1)]),
+                        LiteralNode("int", 2)
                     ]
                 )
             ]
@@ -69,7 +69,7 @@ class TestParse(unittest.TestCase):
         tokens = lexxer.lex()
         parser = Parser(tokens, originalString)
         actual = parser.parseStatement()
-        expected = IfNode(LiteralNode("integer", 1), [CallNode("myFun", [])], [])
+        expected = IfNode(LiteralNode("int", 1), [CallNode("myFun", [])], [])
         self.assertEqual(actual, expected)
 
     def testIfElse(self):
@@ -78,7 +78,7 @@ class TestParse(unittest.TestCase):
         tokens = lexxer.lex()
         parser = Parser(tokens, originalString)
         actual = parser.parseStatement()
-        expected = IfNode(LiteralNode("integer", 1), [CallNode("myFun", [])], [CallNode("myFun2", [])])
+        expected = IfNode(LiteralNode("int", 1), [CallNode("myFun", [])], [CallNode("myFun2", [])])
         self.assertEqual(actual, expected)
 
     def testWhile(self):
@@ -87,7 +87,7 @@ class TestParse(unittest.TestCase):
         tokens = lexxer.lex()
         parser = Parser(tokens, originalString)
         actual = parser.parseStatement()
-        expected = WhileNode(LiteralNode("integer", 1), [CallNode("myFun", [])])
+        expected = WhileNode(LiteralNode("int", 1), [CallNode("myFun", [])])
         self.assertEqual(actual, expected)
 
     def testParseVariable(self):
@@ -96,7 +96,7 @@ class TestParse(unittest.TestCase):
         tokens = lexxer.lex()
         parser = Parser(tokens, originalString)
         actual = parser.parseStatement()
-        expected = DeclarationNode(VariableNode("myNum","int"), LiteralNode("integer", 1))
+        expected = DeclarationNode(VariableNode("myNum","int"), LiteralNode("int", 1))
         self.assertEqual(actual, expected)
 
     def testParseFullProgram(self):
@@ -117,20 +117,20 @@ class TestParse(unittest.TestCase):
         parser = Parser(tokens, originalString)
         actual = parser.parse()
         expected = [
-                DeclarationNode(VariableNode("myNum", "int"), LiteralNode("integer", 1)),
+                GlobalDeclarationNode(VariableNode("myNum", "int"), LiteralNode("int", 1)),
                 FunctionNode(
                     "myFunction",
                     "int",
                     [VariableNode("x", "int")],
                     [
-                        DeclarationNode(VariableNode("myLocal", "int"), LiteralNode("integer", 0)),
+                        DeclarationNode(VariableNode("myLocal", "int"), LiteralNode("int", 0)),
                         IfNode(
                             CallNode("==", [IdentifierNode("x"), IdentifierNode("myNum")]),
                             [
-                                CallNode("=", [IdentifierNode("myLocal"), LiteralNode("integer", 2)]),
-                                ReturnNode(LiteralNode("integer", 1))
+                                CallNode("=", [IdentifierNode("myLocal"), LiteralNode("int", 2)]),
+                                ReturnNode(LiteralNode("int", 1))
                             ],
-                            [ReturnNode(LiteralNode("integer", 0))]
+                            [ReturnNode(LiteralNode("int", 0))]
                         )
                     ]
                 )

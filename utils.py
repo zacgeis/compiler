@@ -28,8 +28,6 @@ def displayError(string, pos, errorMessage):
         print()
     else:
         errorLinePos, errorCharPos = pos
-        # Show where the character is expected
-        errorCharPos += 1
         linePos = 0
         linePrevious = ""
         line = ""

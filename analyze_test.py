@@ -21,6 +21,8 @@ class TestAnalyze(unittest.TestCase):
         tokens = lexxer.lex()
         parser = Parser(tokens, originalString)
         nodes = parser.parse()
+        analyzer = Analyzer(nodes, originalString)
+        analyzer.analyze()
         self.assertEqual(True, True)
 
 if __name__ == "__main__":

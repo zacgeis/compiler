@@ -8,11 +8,11 @@ class TestLex(unittest.TestCase):
         expected = [
             Token("syntax", "if", (0, 1)),
             Token("syntax", "(", (0, 3)),
-            Token("numberLiteral", 10, (0, 5)),
+            Token("integerLiteral", 10, (0, 5)),
             Token("syntax", "+", (0, 7)),
             Token("identifier", "mynum2", (0, 14)),
             Token("syntax", "==", (0, 17)),
-            Token("numberLiteral", 12, (0, 20)),
+            Token("integerLiteral", 12, (0, 20)),
             Token("syntax", ")", (0, 21)),
         ]
 
