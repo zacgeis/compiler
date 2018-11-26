@@ -81,7 +81,7 @@ class VariableNode:
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__)
-                and self.identifier == other.identifier
+                and self.name == other.name
                 and self.type == other.type)
 
 class GlobalDeclarationNode:

@@ -99,6 +99,23 @@ class TestParse(unittest.TestCase):
         expected = DeclarationNode(VariableNode("myNum","int"), LiteralNode("int", 1))
         self.assertEqual(actual, expected)
 
+    def testReturn(self):
+        originalString = "return 1 + 2 + 3;"
+        lexxer = Lexxer(originalString)
+        tokens = lexxer.lex()
+        parser = Parser(tokens, originalString)
+        actual = parser.parseReturn()
+        expected = ReturnNode(
+                CallNode(
+                    "+",
+                    [
+                        LiteralNode("int", 1),
+                        CallNode("+", [LiteralNode("int", 2), LiteralNode("int", 3)])
+                    ]
+                )
+        )
+        self.assertEqual(actual, expected)
+
     def testParseFullProgram(self):
         originalString = """
         myNum: int = 1;
