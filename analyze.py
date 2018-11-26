@@ -102,6 +102,8 @@ class Analyzer:
         if isinstance(node, DeclarationNode):
             if not self.inFunction: raise Exception("Found a GlobalDeclarationNode while in global.")
             self.currentFunction.localVariables[node.variable.name] = node.variable
+            if node.expression is not None:
+                self.secondPass(node.expression)
         elif isinstance(node, FunctionNode):
             if self.inFunction: raise Exception("Found a FunctionNode while in a function.")
             functionSignature = self.functionSignatureFromFunctionNode(node)

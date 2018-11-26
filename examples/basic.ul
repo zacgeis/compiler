@@ -3,5 +3,6 @@ func add(x: int, y: int): int {
 }
 
 func main(): int {
-  return add(1, 2);
+  a: int = 2;
+  return add(1 + 2, 4);
 }
